@@ -17,8 +17,8 @@ class WebProxy {
       // Use a reliable public CORS proxy for local development
       return 'https://api.allorigins.win/raw?url=${Uri.encodeComponent(url)}';
     } else {
-      // Use our ultra-fast self-hosted Vercel CORS proxy in production to bypass all ISP blocks
-      return '/api/cors?url=${Uri.encodeComponent(url)}';
+      // Use our ultra-fast self-hosted Vercel CORS proxy in production to bypass all ISP blocks (must be absolute)
+      return '${Uri.base.origin}/api/cors?url=${Uri.encodeComponent(url)}';
     }
   }
 
