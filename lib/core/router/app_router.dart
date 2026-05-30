@@ -417,11 +417,11 @@ GoRouter createRouter() {
       ShellRoute(
         builder: (context, state, child) => MainScaffold(child: child),
         routes: [
-          GoRoute(path: '/', pageBuilder: (context, state) => _fadeTransitionPage(const HomeScreen(), state)),
-          GoRoute(path: '/search', pageBuilder: (context, state) => _fadeTransitionPage(const SearchScreen(), state)),
-          GoRoute(path: '/library', pageBuilder: (context, state) => _fadeTransitionPage(const LibraryScreen(), state)),
-          GoRoute(path: '/themes', pageBuilder: (context, state) => _fadeTransitionPage(const ThemesScreen(), state)),
-          GoRoute(path: '/profile', pageBuilder: (context, state) => _fadeTransitionPage(const ProfileScreen(), state)),
+          GoRoute(path: '/', pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const HomeScreen())),
+          GoRoute(path: '/search', pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const SearchScreen())),
+          GoRoute(path: '/library', pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const LibraryScreen())),
+          GoRoute(path: '/themes', pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const ThemesScreen())),
+          GoRoute(path: '/profile', pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const ProfileScreen())),
           GoRoute(
             path: '/newly-added',
             pageBuilder: (context, state) => CustomTransitionPage(
