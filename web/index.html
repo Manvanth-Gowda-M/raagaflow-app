@@ -297,7 +297,7 @@
       <div class="app-icon-container">
         <div class="app-icon-glow"></div>
         <div class="app-icon-img">
-          <img src="favicon.png" alt="RaagaFlow" onerror="this.src='icons/Icon-192.png'">
+          <img src="assets/assets/images/app_icon.png" alt="RaagaFlow" onerror="this.src='favicon.png'">
         </div>
       </div>
       
@@ -318,6 +318,7 @@
   <script>
     // GitHub Release direct APK download placeholder (editable in production)
     const GITHUB_APK_URL = "https://github.com/Manvanth-Gowda-M/raagaflow-app/releases/latest/download/app-release.apk";
+    let deferredPrompt = null;
 
     document.addEventListener("DOMContentLoaded", function() {
       const uA = navigator.userAgent || navigator.vendor || window.opera;
@@ -389,13 +390,51 @@
             floatPill.style.display = "flex";
           }, 400);
         });
+      }
 
-        floatPill.addEventListener("click", function() {
+      // Shared Click event handler for the floating installation pill
+      floatPill.addEventListener("click", function() {
+        if (isMobile) {
           overlay.style.display = "flex";
           setTimeout(() => overlay.classList.add("show"), 10);
           floatPill.style.display = "none";
-        });
+        } else if (deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+              floatPill.style.display = "none";
+            }
+            deferredPrompt = null;
+          });
+        }
+      });
+    });
+
+    // PWA capture event for Desktop / Laptop installation
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      
+      const uA = navigator.userAgent || navigator.vendor || window.opera;
+      const isAndroid = /android/i.test(uA);
+      const isIOS = /iPad|iPhone|iPod/.test(uA) && !window.MSStream;
+      const isMobile = isAndroid || isIOS;
+
+      // Show Install Web App pill on PC if it's PWA installable
+      if (!isMobile) {
+        const floatPill = document.getElementById("floating-install-pill");
+        if (floatPill) {
+          floatPill.innerHTML = '<span style="font-size: 16px;">🌸</span> Install Web App';
+          floatPill.style.display = "flex";
+        }
       }
+    });
+
+    // Hide pill if app is successfully installed
+    window.addEventListener('appinstalled', () => {
+      const floatPill = document.getElementById("floating-install-pill");
+      if (floatPill) floatPill.style.display = "none";
+      deferredPrompt = null;
     });
   </script>
 
