@@ -1,5 +1,5 @@
-// Server-side CORS Proxy running natively on Vercel's backend runtime
-export default async function handler(req, res) {
+// Server-side CORS Proxy running natively on Vercel's backend runtime (CommonJS format)
+module.exports = async function handler(req, res) {
   // Allow all Cross-Origin requests
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -39,4 +39,4 @@ export default async function handler(req, res) {
   } catch (error) {
     res.status(500).send(error.message);
   }
-}
+};
