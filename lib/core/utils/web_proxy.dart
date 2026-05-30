@@ -21,4 +21,8 @@ class WebProxy {
       return '/api/cors?url=${Uri.encodeComponent(url)}';
     }
   }
+
+  /// Dummy placeholders to maintain compilation compatibility with stream_resolver.dart
+  static void rotateProxy() {}
+  static void resetProxy() {}
 }
