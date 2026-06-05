@@ -1,0 +1,447 @@
+<!DOCTYPE html><html><head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="raagaflow">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <title>raagaflow</title>
+  <link rel="manifest" href="manifest.json">
+  <style id="splash-screen-style">
+    html {
+      height: 100%
+    }
+
+    body {
+      margin: 0;
+      min-height: 100%;
+      background-color: #0F0C0B;
+          background-size: 100% 100%;
+    }
+
+    .center {
+      margin: 0;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -ms-transform: translate(-50%, -50%);
+      transform: translate(-50%, -50%);
+    }
+
+    #splash img {
+      border-radius: 22.5%;
+      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+    }
+
+    .contain {
+      display:block;
+      width:100%; height:100%;
+      object-fit: contain;
+    }
+
+    .stretch {
+      display:block;
+      width:100%; height:100%;
+    }
+
+    .cover {
+      display:block;
+      width:100%; height:100%;
+      object-fit: cover;
+    }
+
+    .bottom {
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      -ms-transform: translate(-50%, 0);
+      transform: translate(-50%, 0);
+    }
+
+    .bottomLeft {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+    }
+
+    .bottomRight {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+    }
+  </style>
+  <script id="splash-screen-script">
+    function removeSplashFromWeb() {
+      document.getElementById("splash")?.remove();
+      document.getElementById("splash-branding")?.remove();
+      document.body.style.background = "transparent";
+    }
+  </script>
+  <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+</head>
+<body>
+  <!-- ─── Premium Glassmorphic Mobile App Installer Overlay ─── -->
+  <style>
+    #app-install-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(13, 16, 32, 0.82);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      z-index: 999999;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #F7F4F1;
+      padding: 20px;
+      box-sizing: border-box;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    #app-install-overlay.show {
+      display: flex;
+      opacity: 1;
+    }
+    .install-card {
+      background: rgba(22, 26, 48, 0.95);
+      border-radius: 32px;
+      border: 1.5px solid rgba(228, 139, 167, 0.35);
+      box-shadow: 0 32px 80px rgba(0, 0, 0, 0.75), 0 0 40px rgba(228, 139, 167, 0.15);
+      width: 100%;
+      max-width: 400px;
+      padding: 32px 24px;
+      text-align: center;
+      box-sizing: border-box;
+      transform: translateY(30px);
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    #app-install-overlay.show .install-card {
+      transform: translateY(0);
+    }
+    .app-icon-container {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      margin: 0 auto 20px;
+    }
+    .app-icon-glow {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      border-radius: 22px;
+      background: linear-gradient(135deg, #E48BA7, #8BA4E4);
+      filter: blur(12px);
+      opacity: 0.6;
+      animation: pulse-glow 2.5s infinite ease-in-out;
+    }
+    .app-icon-img {
+      position: relative;
+      width: 88px;
+      height: 88px;
+      border-radius: 22px;
+      background: #0F0C0B;
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    .app-icon-img img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    @keyframes pulse-glow {
+      0%, 100% { transform: scale(0.95); opacity: 0.5; }
+      50% { transform: scale(1.08); opacity: 0.8; }
+    }
+    .install-title {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin: 0 0 8px;
+      background: linear-gradient(135deg, #E48BA7, #8BA4E4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .install-subtitle {
+      font-size: 13px;
+      color: rgba(247, 244, 241, 0.7);
+      line-height: 1.5;
+      margin: 0 0 22px;
+      padding: 0 10px;
+    }
+    .install-btn {
+      display: block;
+      width: 100%;
+      background: linear-gradient(135deg, #E48BA7, #8BA4E4);
+      color: #0D1020;
+      font-weight: 800;
+      font-size: 15px;
+      padding: 16px;
+      border-radius: 24px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(228, 139, 167, 0.35);
+      transition: all 0.25s ease;
+      box-sizing: border-box;
+      text-decoration: none;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .install-btn:hover, .install-btn:active {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(228, 139, 167, 0.5);
+    }
+    .secondary-btn {
+      background: rgba(255, 255, 255, 0.08);
+      color: rgba(247, 244, 241, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: none;
+      margin-bottom: 0;
+    }
+    .secondary-btn:hover, .secondary-btn:active {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      box-shadow: none;
+      transform: none;
+    }
+    .steps-container {
+      text-align: left;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: rgba(247, 244, 241, 0.8);
+      line-height: 1.4;
+    }
+    .step-item:last-child {
+      margin-bottom: 0;
+    }
+    .step-num {
+      background: rgba(228, 139, 167, 0.2);
+      color: #E48BA7;
+      border: 1px solid rgba(228, 139, 167, 0.4);
+      font-weight: 700;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-right: 10px;
+      flex-shrink: 0;
+      font-size: 10px;
+    }
+    #floating-install-pill {
+      display: none;
+      position: fixed;
+      bottom: 110px;
+      right: 24px;
+      z-index: 99999;
+      background: linear-gradient(135deg, #E48BA7, #8BA4E4);
+      color: #0D1020;
+      font-weight: 800;
+      font-size: 13px;
+      padding: 12px 20px;
+      border-radius: 30px;
+      box-shadow: 0 10px 25px rgba(228, 139, 167, 0.4);
+      border: none;
+      cursor: pointer;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      animation: bounce-pill 4s infinite ease-in-out;
+    }
+    #floating-install-pill:active {
+      transform: scale(0.95);
+    }
+    @keyframes bounce-pill {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+  </style>
+
+  <div id="app-install-overlay">
+    <div class="install-card">
+      <div class="app-icon-container">
+        <div class="app-icon-glow"></div>
+        <div class="app-icon-img">
+          <img src="assets/assets/images/app_icon.png" alt="RaagaFlow" onerror="this.src='favicon.png'">
+        </div>
+      </div>
+      
+      <h2 class="install-title" id="modal-title">Install RaagaFlow</h2>
+      <p class="install-subtitle" id="modal-subtitle">Experience luxury Indian music streaming at its best with our high-fidelity native player.</p>
+      
+      <div class="steps-container" id="steps-box"></div>
+      
+      <a href="#" class="install-btn" id="install-main-btn">Install Native App</a>
+      <button class="install-btn secondary-btn" id="install-close-btn">Use Web Player</button>
+    </div>
+  </div>
+
+  <button id="floating-install-pill">
+    <span style="font-size: 16px;">🌸</span> Install App
+  </button>
+
+  <script>
+    // GitHub Release direct APK download placeholder (editable in production)
+    const GITHUB_APK_URL = "https://github.com/Manvanth-Gowda-M/raagaflow-app/releases/latest/download/app-release.apk";
+    let deferredPrompt = null;
+
+    document.addEventListener("DOMContentLoaded", function() {
+      const uA = navigator.userAgent || navigator.vendor || window.opera;
+      const isAndroid = /android/i.test(uA);
+      const isIOS = /iPad|iPhone|iPod/.test(uA) && !window.MSStream;
+      const isMobile = isAndroid || isIOS;
+
+      const overlay = document.getElementById("app-install-overlay");
+      const title = document.getElementById("modal-title");
+      const subtitle = document.getElementById("modal-subtitle");
+      const stepsBox = document.getElementById("steps-box");
+      const mainBtn = document.getElementById("install-main-btn");
+      const closeBtn = document.getElementById("install-close-btn");
+      const floatPill = document.getElementById("floating-install-pill");
+
+      // Only run visual installation prompts if visiting from mobile
+      if (isMobile) {
+        // Construct tailored experience
+        if (isAndroid) {
+          title.textContent = "RaagaFlow for Android 🌸";
+          subtitle.textContent = "Get the native Android App for high-fidelity offline listening, lock screen controls, and background audio support.";
+          mainBtn.href = GITHUB_APK_URL;
+          mainBtn.textContent = "Download Android APK";
+          
+          stepsBox.innerHTML = `
+            <div class="step-item"><div class="step-num">1</div><div>Tap <b>Download Android APK</b> to get the release package.</div></div>
+            <div class="step-item"><div class="step-num">2</div><div>Open the downloaded file in your notification bar or downloads.</div></div>
+            <div class="step-item"><div class="step-num">3</div><div>Allow install from "Unknown Sources" if prompted by your system.</div></div>
+            <div class="step-item"><div class="step-num">4</div><div>Enjoy beautiful, native music streaming!</div></div>
+          `;
+        } else if (isIOS) {
+          title.textContent = "RaagaFlow on iOS 🌸";
+          subtitle.textContent = "Add RaagaFlow to your home screen to experience it as a native, fullscreen application without standard browser borders.";
+          mainBtn.style.display = "none"; // Hide standard APK link for iOS
+
+          stepsBox.innerHTML = `
+            <div class="step-item"><div class="step-num">1</div><div>Tap the <b>Share</b> button in the bottom toolbar of Safari.</div></div>
+            <div class="step-item"><div class="step-num">2</div><div>Scroll down and select <b>Add to Home Screen</b>.</div></div>
+            <div class="step-item"><div class="step-num">3</div><div>Open RaagaFlow from your Home Screen and start streaming!</div></div>
+          `;
+        }
+
+        // Show modal on first visit in the session
+        const sessionDismissed = sessionStorage.getItem("install_prompt_dismissed");
+        if (!sessionDismissed) {
+          setTimeout(() => {
+            overlay.style.display = "flex";
+            setTimeout(() => overlay.classList.add("show"), 10);
+          }, 1500); // Premium delay for branding load
+        } else {
+          floatPill.style.display = "flex";
+        }
+
+        // Action Handlers
+        closeBtn.addEventListener("click", function() {
+          sessionStorage.setItem("install_prompt_dismissed", "true");
+          overlay.classList.remove("show");
+          setTimeout(() => {
+            overlay.style.display = "none";
+            floatPill.style.display = "flex";
+          }, 400);
+        });
+
+        mainBtn.addEventListener("click", function() {
+          sessionStorage.setItem("install_prompt_dismissed", "true");
+          overlay.classList.remove("show");
+          setTimeout(() => {
+            overlay.style.display = "none";
+            floatPill.style.display = "flex";
+          }, 400);
+        });
+      }
+
+      // Shared Click event handler for the floating installation pill
+      floatPill.addEventListener("click", function() {
+        if (isMobile) {
+          overlay.style.display = "flex";
+          setTimeout(() => overlay.classList.add("show"), 10);
+          floatPill.style.display = "none";
+        } else if (deferredPrompt) {
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+              floatPill.style.display = "none";
+            }
+            deferredPrompt = null;
+          });
+        }
+      });
+    });
+
+    // PWA capture event for Desktop / Laptop installation
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      
+      const uA = navigator.userAgent || navigator.vendor || window.opera;
+      const isAndroid = /android/i.test(uA);
+      const isIOS = /iPad|iPhone|iPod/.test(uA) && !window.MSStream;
+      const isMobile = isAndroid || isIOS;
+
+      // Show Install Web App pill on PC if it's PWA installable
+      if (!isMobile) {
+        const floatPill = document.getElementById("floating-install-pill");
+        if (floatPill) {
+          floatPill.innerHTML = '<span style="font-size: 16px;">🌸</span> Install Web App';
+          floatPill.style.display = "flex";
+        }
+      }
+    });
+
+    // Hide pill if app is successfully installed
+    window.addEventListener('appinstalled', () => {
+      const floatPill = document.getElementById("floating-install-pill");
+      if (floatPill) floatPill.style.display = "none";
+      deferredPrompt = null;
+    });
+  </script>
+
+  <picture id="splash">
+      <source srcset="splash/img/light-1x.png 1x, splash/img/light-2x.png 2x, splash/img/light-3x.png 3x, splash/img/light-4x.png 4x" media="(prefers-color-scheme: light)">
+      <source srcset="splash/img/dark-1x.png 1x, splash/img/dark-2x.png 2x, splash/img/dark-3x.png 3x, splash/img/dark-4x.png 4x" media="(prefers-color-scheme: dark)">
+      <img class="center" aria-hidden="true" src="splash/img/light-1x.png" alt="">
+  </picture>
+  <script src="flutter_bootstrap.js" async=""></script>
+</body></html>
