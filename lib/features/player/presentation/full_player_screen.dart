@@ -12,7 +12,8 @@ import '../../library/domain/library_provider.dart';
 import '../domain/player_provider.dart';
 import 'widgets/ambient_visualizer.dart';
 import 'widgets/vinyl_visualizer.dart';
-import 'widgets/waveform_seeker.dart';
+import 'widgets/audio_effects_panel.dart';
+
 class FullPlayerScreen extends ConsumerStatefulWidget {
   const FullPlayerScreen({super.key});
 
@@ -304,14 +305,6 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen>
                       if (visualizerStyle == VisualizerStyle.vinyl) {
                         return Column(
                           children: [
-                            WaveformSeeker(
-                              position: position,
-                              duration: duration,
-                              trackTitle: track.title,
-                              isPlaying: playerState.isPlaying,
-                              onSeek: (newPos) => handler.seek(newPos),
-                            ),
-                            const SizedBox(height: 4),
                             SliderTheme(
                               data: SliderTheme.of(context).copyWith(
                                 activeTrackColor: AppColors.accent,
@@ -475,6 +468,29 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen>
                     onPressed: () {},
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Center(
+              child: TextButton.icon(
+                onPressed: () {
+                  showModalBottomSheet(
+                    context: context,
+                    backgroundColor: Colors.transparent,
+                    barrierColor: Colors.black.withValues(alpha: 0.7),
+                    isScrollControlled: true,
+                    useSafeArea: false,
+                    builder: (context) => const AudioEffectsPanel(),
+                  );
+                },
+                icon: Icon(Icons.graphic_eq_rounded, color: AppColors.accent),
+                label: Text('Audio Effects', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+                style: TextButton.styleFrom(
+                  backgroundColor: AppColors.surfaceContainerHigh.withValues(alpha: 0.5),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  side: BorderSide(color: AppColors.accent.withValues(alpha: 0.3)),
+                ),
               ),
             ),
             const SizedBox(height: 28),

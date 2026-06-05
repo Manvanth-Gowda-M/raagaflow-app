@@ -30,19 +30,42 @@ final selectedLanguageProvider = NotifierProvider<SelectedLanguageNotifier, Stri
 });
 
 final trendingProvider =
-    FutureProvider.autoDispose.family<List<TrackModel>, String>((ref, language) async {
-  // autoDispose → no caching; every time the home screen opens it gets fresh songs
+    FutureProvider.family<List<TrackModel>, String>((ref, language) async {
   final repo = ref.read(homeRepositoryProvider);
   return repo.getTrending(language);
 });
 
 final newReleasesProvider =
-    FutureProvider.autoDispose.family<List<TrackModel>, String>((ref, language) async {
+    FutureProvider.family<List<TrackModel>, String>((ref, language) async {
   final repo = ref.read(homeRepositoryProvider);
   return repo.getNewReleases(language);
 });
 
-final combinedNewReleasesProvider = FutureProvider.autoDispose<List<TrackModel>>((ref) async {
+final famousProvider =
+    FutureProvider.family<List<TrackModel>, String>((ref, language) async {
+  final repo = ref.read(homeRepositoryProvider);
+  return repo.getFamous(language);
+});
+
+final globalTrendingProvider =
+    FutureProvider<List<TrackModel>>((ref) async {
+  final repo = ref.read(homeRepositoryProvider);
+  return repo.getGlobalTrending();
+});
+
+final movieSongsProvider =
+    FutureProvider.family<List<TrackModel>, String>((ref, language) async {
+  final repo = ref.read(homeRepositoryProvider);
+  return repo.getMovieSongs(language);
+});
+
+final officialSongsProvider =
+    FutureProvider.family<List<TrackModel>, String>((ref, language) async {
+  final repo = ref.read(homeRepositoryProvider);
+  return repo.getOfficialSongs(language);
+});
+
+final combinedNewReleasesProvider = FutureProvider<List<TrackModel>>((ref) async {
   final languages = await ref.watch(selectedLanguagesProvider.future);
   final repo = ref.read(homeRepositoryProvider);
 

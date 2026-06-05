@@ -20,8 +20,8 @@ import '../../shared/services/web_notification_service.dart';
 import '../theme/app_colors.dart';
 
 class MainScaffold extends ConsumerStatefulWidget {
-  final Widget child;
-  const MainScaffold({super.key, required this.child});
+  final StatefulNavigationShell navigationShell;
+  const MainScaffold({super.key, required this.navigationShell});
 
   @override
   ConsumerState<MainScaffold> createState() => _MainScaffoldState();
@@ -56,14 +56,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
     super.dispose();
   }
 
-  int _locationToIndex(String location) {
-    if (location.startsWith('/search')) return 1;
-    if (location.startsWith('/library')) return 2;
-    if (location.startsWith('/themes')) return 3;
-    if (location.startsWith('/profile')) return 4;
-    return 0;
-  }
-
   void _triggerToast(TrackModel track) {
     setState(() {
       _activeTrack = track;
@@ -87,8 +79,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
 
   @override
   Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).uri.toString();
-    final currentIndex = _locationToIndex(location);
+    final currentIndex = widget.navigationShell.currentIndex;
 
     // Watch playerProvider changes to show custom Now Playing banner toasts & browser notifications reactively
     ref.listen<PlayerState>(playerProvider, (previous, next) {
@@ -113,7 +104,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
       body: Stack(
         children: [
           Positioned.fill(
-            child: widget.child,
+            child: widget.navigationShell,
           ),
           Positioned(
             left: 0,
@@ -128,23 +119,10 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
             child: _PremiumNavigationBar(
               currentIndex: currentIndex,
               onTap: (index) {
-                switch (index) {
-                  case 0:
-                    context.go('/');
-                    break;
-                  case 1:
-                    context.go('/search');
-                    break;
-                  case 2:
-                    context.go('/library');
-                    break;
-                  case 3:
-                    context.go('/themes');
-                    break;
-                  case 4:
-                    context.go('/profile');
-                    break;
-                }
+                widget.navigationShell.goBranch(
+                  index,
+                  initialLocation: index == widget.navigationShell.currentIndex,
+                );
               },
             ),
           ),
@@ -382,19 +360,90 @@ class _PremiumNavigationBar extends StatelessWidget {
   }
 }
 
-CustomTransitionPage<void> _fadeTransitionPage(Widget child, GoRouterState state) {
-  return CustomTransitionPage<void>(
-    key: state.pageKey,
-    child: child,
-    transitionDuration: const Duration(milliseconds: 220),
-    reverseTransitionDuration: const Duration(milliseconds: 220),
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      return FadeTransition(
-        opacity: CurveTween(curve: Curves.easeInOutCubic).animate(animation),
-        child: child,
+class AnimatedIndexedStack extends StatefulWidget {
+  final int index;
+  final List<Widget> children;
+  final Duration duration;
+
+  const AnimatedIndexedStack({
+    super.key,
+    required this.index,
+    required this.children,
+    this.duration = const Duration(milliseconds: 280),
+  });
+
+  @override
+  State<AnimatedIndexedStack> createState() => _AnimatedIndexedStackState();
+}
+
+class _AnimatedIndexedStackState extends State<AnimatedIndexedStack> with TickerProviderStateMixin {
+  late List<AnimationController> _controllers;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = List.generate(widget.children.length, (i) {
+      return AnimationController(
+        vsync: this,
+        duration: widget.duration,
+        value: i == widget.index ? 1.0 : 0.0,
       );
-    },
-  );
+    });
+  }
+
+  @override
+  void didUpdateWidget(AnimatedIndexedStack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.index != oldWidget.index) {
+      _controllers[oldWidget.index].reverse();
+      _controllers[widget.index].forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: List.generate(widget.children.length, (i) {
+        return AnimatedBuilder(
+          animation: _controllers[i],
+          builder: (context, child) {
+            final isOffstage = _controllers[i].value == 0.0 && i != widget.index;
+            return Offstage(
+              offstage: isOffstage,
+              child: child,
+            );
+          },
+          child: FadeTransition(
+            opacity: _controllers[i],
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0.0, 0.015),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(
+                parent: _controllers[i],
+                curve: Curves.easeOutCubic,
+              )),
+              child: IgnorePointer(
+                ignoring: i != widget.index,
+                child: TickerMode(
+                  enabled: i == widget.index || _controllers[i].isAnimating,
+                  child: widget.children[i],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
 }
 
 GoRouter createRouter() {
@@ -412,54 +461,110 @@ GoRouter createRouter() {
     },
     routes: [
       GoRoute(
-          path: '/onboarding',
-          builder: (_, __) => const OnboardingScreen()),
-      ShellRoute(
-        builder: (context, state, child) => MainScaffold(child: child),
-        routes: [
-          GoRoute(path: '/', pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const HomeScreen())),
-          GoRoute(path: '/search', pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const SearchScreen())),
-          GoRoute(path: '/library', pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const LibraryScreen())),
-          GoRoute(path: '/themes', pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const ThemesScreen())),
-          GoRoute(path: '/profile', pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const ProfileScreen())),
-          GoRoute(
-            path: '/newly-added',
-            pageBuilder: (context, state) => CustomTransitionPage(
-              child: const NewlyAddedScreen(),
-              transitionsBuilder: (_, animation, __, child) => SlideTransition(
-                position: Tween(
-                        begin: const Offset(0, 1), end: Offset.zero)
-                    .animate(CurvedAnimation(
-                        parent: animation, curve: Curves.easeOutCubic)),
-                child: child,
+        path: '/onboarding',
+        builder: (_, __) => const OnboardingScreen(),
+      ),
+      StatefulShellRoute(
+        builder: (context, state, navigationShell) {
+          return MainScaffold(navigationShell: navigationShell);
+        },
+        navigatorContainerBuilder: (context, navigationShell, children) {
+          return AnimatedIndexedStack(
+            index: navigationShell.currentIndex,
+            children: children,
+          );
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/',
+                pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const HomeScreen()),
+                routes: [
+                  GoRoute(
+                    path: 'newly-added',
+                    pageBuilder: (context, state) => CustomTransitionPage(
+                      key: state.pageKey,
+                      child: const NewlyAddedScreen(),
+                      transitionsBuilder: (_, animation, __, child) => SlideTransition(
+                        position: Tween(
+                          begin: const Offset(0, 1),
+                          end: Offset.zero,
+                        ).animate(CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                        )),
+                        child: child,
+                      ),
+                    ),
+                  ),
+                  GoRoute(
+                    path: 'mood',
+                    pageBuilder: (context, state) => CustomTransitionPage(
+                      key: state.pageKey,
+                      child: const MoodScreen(),
+                      transitionsBuilder: (_, animation, __, child) => SlideTransition(
+                        position: Tween(
+                          begin: const Offset(0, 1),
+                          end: Offset.zero,
+                        ).animate(CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                        )),
+                        child: child,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
+            ],
           ),
-          GoRoute(
-            path: '/mood',
-            pageBuilder: (context, state) => CustomTransitionPage(
-              child: const MoodScreen(),
-              transitionsBuilder: (_, animation, __, child) => SlideTransition(
-                position: Tween(
-                        begin: const Offset(0, 1), end: Offset.zero)
-                    .animate(CurvedAnimation(
-                        parent: animation, curve: Curves.easeOutCubic)),
-                child: child,
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/search',
+                pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const SearchScreen()),
               ),
-            ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/library',
+                pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const LibraryScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/themes',
+                pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const ThemesScreen()),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/profile',
+                pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const ProfileScreen()),
+              ),
+            ],
           ),
         ],
       ),
-
       GoRoute(
         path: '/player',
         pageBuilder: (context, state) => CustomTransitionPage(
           child: const FullPlayerScreen(),
           transitionsBuilder: (_, animation, __, child) => SlideTransition(
             position: Tween(
-                    begin: const Offset(0, 1), end: Offset.zero)
-                .animate(CurvedAnimation(
-                    parent: animation, curve: Curves.easeOutCubic)),
+              begin: const Offset(0, 1),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            )),
             child: child,
           ),
         ),
@@ -467,4 +572,3 @@ GoRouter createRouter() {
     ],
   );
 }
-

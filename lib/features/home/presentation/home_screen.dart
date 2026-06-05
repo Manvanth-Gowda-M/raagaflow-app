@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shimmer/shimmer.dart';
@@ -15,7 +16,6 @@ import '../domain/notifications_provider.dart';
 import '../../player/domain/player_provider.dart';
 import '../../mood/domain/mood_provider.dart';
 import '../../library/domain/library_provider.dart';
-import '../../search/domain/search_provider.dart';
 
 
 
@@ -33,12 +33,32 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void initState() {
     super.initState();
     _loadUserName();
+    // Providers are now persistent (no autoDispose) — data loads once and
+    // stays cached in memory until a pull-to-refresh explicitly invalidates them.
+    // No invalidation needed here — the provider will fetch on first access.
   }
 
   Future<void> _loadUserName() async {
     final prefs = await SharedPreferences.getInstance();
     final name = prefs.getString('user_name') ?? '';
     if (mounted) setState(() => _userName = name);
+  }
+
+  /// Pull-to-refresh: bust the provider cache and await fresh results.
+  Future<void> _refreshHome() async {
+    ref.invalidate(trendingProvider);
+    ref.invalidate(newReleasesProvider);
+    ref.invalidate(combinedNewReleasesProvider);
+    ref.invalidate(famousProvider);
+    ref.invalidate(globalTrendingProvider);
+    ref.invalidate(movieSongsProvider);
+    ref.invalidate(officialSongsProvider);
+    final lang = ref.read(selectedLanguageProvider);
+    // Await at least the primary sections so the spinner resolves naturally
+    await Future.wait([
+      ref.read(trendingProvider(lang).future).catchError((_) => <TrackModel>[]),
+      ref.read(combinedNewReleasesProvider.future).catchError((_) => <TrackModel>[]),
+    ]);
   }
 
   @override
@@ -305,9 +325,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
+        child: RefreshIndicator(
+          onRefresh: _refreshHome,
+          color: AppColors.accent,
+          backgroundColor: AppColors.surfaceContainerHigh,
+          displacement: 60,
+          strokeWidth: 2.5,
+          child: CustomScrollView(
+            // Large cacheExtent pre-renders off-screen slivers so
+            // content appears instantly as the user scrolls.
+            cacheExtent: 1200,
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            slivers: [
             // ─── 1. Luxury Editorial Header ───
             SliverToBoxAdapter(
               child: Padding(
@@ -337,37 +368,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             size: 24,
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        // Notification Bell
-                        Consumer(builder: (context, ref, _) {
-                          final notifState = ref.watch(notificationsProvider);
-                          final hasUnread = notifState.list.any((n) => n.isNew);
-                          return GestureDetector(
-                            onTap: _showNotificationPanel,
-                            child: Stack(
-                              children: [
-                                Icon(
-                                  Icons.notifications_none_rounded,
-                                  color: AppColors.textPrimary,
-                                  size: 24,
-                                ),
-                                if (hasUnread)
-                                  Positioned(
-                                    right: 2,
-                                    top: 2,
-                                    child: Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: BoxDecoration(
-                                        color: AppColors.secondary,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          );
-                        }),
                         const SizedBox(width: 16),
                         // Circle Portrait Avatar
                         CircleAvatar(
@@ -525,23 +525,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                 ),
                               ),
-                              const Spacer(),
-                              // Page Indicators
-                              Row(
-                                children: List.generate(4, (index) {
-                                  return Container(
-                                    width: index == 0 ? 12 : 5,
-                                    height: 5,
-                                    margin: const EdgeInsets.only(left: 4),
-                                    decoration: BoxDecoration(
-                                      color: index == 0
-                                          ? Colors.white
-                                          : Colors.white.withValues(alpha: 0.4),
-                                      borderRadius: BorderRadius.circular(3),
-                                    ),
-                                  );
-                                }),
-                              ),
                             ],
                           ),
                         ],
@@ -559,18 +542,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Row(
                   children: [
                     Text('Continue Listening', style: AppTextStyles.sectionTitle),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => context.go('/library'),
-                      child: Text(
-                        'View all >',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.accent,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -637,18 +608,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Row(
                   children: [
                     Text('Newly Added', style: AppTextStyles.sectionTitle),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => context.push('/newly-added'),
-                      child: Text(
-                        'View all >',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.accent,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -705,18 +664,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Row(
                   children: [
                     Text('Mood Collections', style: AppTextStyles.sectionTitle),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => context.push('/mood'),
-                      child: Text(
-                        'View all >',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.accent,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -781,9 +728,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       (context, index) {
                         final lang = languages[index];
                         final label = lang[0].toUpperCase() + lang.substring(1);
-                        return _LanguageTrendingSection(
-                          language: lang,
-                          label: label,
+                        return Column(
+                          children: [
+                            _LanguageTrackSection(
+                              tracksAsync: ref.watch(trendingProvider(lang)),
+                              language: lang,
+                              title: '$label Trending',
+                              searchQuery: 'latest $lang songs',
+                            ),
+                            _LanguageTrackSection(
+                              tracksAsync: ref.watch(famousProvider(lang)),
+                              language: lang,
+                              title: 'Famous $label',
+                              searchQuery: 'superhit $lang songs',
+                            ),
+                            _LanguageTrackSection(
+                              tracksAsync: ref.watch(movieSongsProvider(lang)),
+                              language: lang,
+                              title: '$label Movie Songs',
+                              searchQuery: '$lang movie songs 2024',
+                              emojiOverride: '🎬',
+                            ),
+                            _LanguageTrackSection(
+                              tracksAsync: ref.watch(officialSongsProvider(lang)),
+                              language: lang,
+                              title: 'Official $label Songs',
+                              searchQuery: '$lang independent songs',
+                              emojiOverride: '🎙️',
+                            ),
+                          ],
                         );
                       },
                       childCount: languages.length,
@@ -793,6 +766,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               );
             }),
 
+            // ─── 5b. Global Trending Section ───
+            SliverToBoxAdapter(
+              child: Consumer(builder: (context, ref, _) {
+                return _LanguageTrackSection(
+                  tracksAsync: ref.watch(globalTrendingProvider),
+                  language: 'global',
+                  title: 'Global Trending',
+                  searchQuery: 'trending hits hindi tamil telugu',
+                  emojiOverride: '🌍',
+                );
+              }),
+            ),
+
             // ─── 6. Recently Played Section ───
             SliverToBoxAdapter(
               child: Padding(
@@ -800,18 +786,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Row(
                   children: [
                     Text('Recently Played', style: AppTextStyles.sectionTitle),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => context.go('/library'),
-                      child: Text(
-                        'View all >',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.accent,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -858,6 +832,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             const SliverToBoxAdapter(child: SizedBox(height: 180)),
           ],
         ),
+        ),
       ),
     );
   }
@@ -878,12 +853,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: Image.network(
-                    track.imageUrl,
+                  child: CachedNetworkImage(
+                    imageUrl: track.imageUrl,
                     width: 130,
                     height: 130,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Image.asset(
+                    memCacheWidth: 260,
+                    memCacheHeight: 260,
+                    placeholder: (_, __) => const ShimmerBox(width: 130, height: 130, radius: 20),
+                    errorWidget: (_, __, ___) => Image.asset(
                       'assets/images/app_icon.png',
                       width: 130,
                       height: 130,
@@ -1367,13 +1345,18 @@ class ShimmerHeroCard extends StatelessWidget {
 // Per-Language Trending Section Widget
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _LanguageTrendingSection extends ConsumerWidget {
+class _LanguageTrackSection extends ConsumerWidget {
+  final AsyncValue<List<TrackModel>> tracksAsync;
   final String language;
-  final String label;
+  final String title;
+  final String? emojiOverride;
 
-  const _LanguageTrendingSection({
+  const _LanguageTrackSection({
+    required this.tracksAsync,
     required this.language,
-    required this.label,
+    required this.title,
+    required String searchQuery,  // kept for call-site compat, unused
+    this.emojiOverride,
   });
 
   // Language-specific emoji flags/icons for a premium feel
@@ -1397,8 +1380,13 @@ class _LanguageTrendingSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final trendingAsync = ref.watch(trendingProvider(language));
-    final emoji = _langEmoji[language] ?? '🎵';
+    final emoji = emojiOverride ?? _langEmoji[language] ?? '🎵';
+
+    // Hide the whole section when data is empty or errored — no blank gaps
+    if (tracksAsync is AsyncData && (tracksAsync.value?.isEmpty ?? true)) {
+      return const SizedBox.shrink();
+    }
+    if (tracksAsync is AsyncError) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1422,32 +1410,18 @@ class _LanguageTrendingSection extends ConsumerWidget {
               ),
               const SizedBox(width: 10),
               Text(
-                '$label Trending',
+                title,
                 style: AppTextStyles.sectionTitle,
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {
-                  ref.read(searchProvider.notifier).search('latest $language songs');
-                  context.go('/search');
-                },
-                child: Text(
-                  'View all >',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.accent,
-                  ),
-                ),
               ),
             ],
           ),
         ),
 
         // ── Cards Row ──
-        SizedBox(
-          height: 206,
-          child: trendingAsync.when(
+        RepaintBoundary(
+          child: SizedBox(
+            height: 206,
+            child: tracksAsync.when(
             loading: () => ListView.builder(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -1469,16 +1443,20 @@ class _LanguageTrendingSection extends ConsumerWidget {
             ),
             error: (_, __) => Center(
               child: Text(
-                'Could not load $label tracks',
+                'Could not load tracks',
                 style: TextStyle(color: AppColors.textHint, fontSize: 13),
               ),
             ),
-            data: (tracks) => ListView.builder(
-              scrollDirection: Axis.horizontal,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              itemCount: tracks.length,
-              itemBuilder: (context, i) {
+            data: (tracks) {
+              if (tracks.isEmpty) return const SizedBox.shrink();
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                addAutomaticKeepAlives: false,
+                addRepaintBoundaries: false,
+                itemCount: tracks.length,
+                itemBuilder: (context, i) {
                 final track = tracks[i];
                 return GestureDetector(
                   onTap: () {
@@ -1495,12 +1473,15 @@ class _LanguageTrendingSection extends ConsumerWidget {
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(20),
-                              child: Image.network(
-                                track.imageUrl,
+                              child: CachedNetworkImage(
+                                imageUrl: track.imageUrl,
                                 width: 130,
                                 height: 130,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Image.asset(
+                                memCacheWidth: 260,
+                                memCacheHeight: 260,
+                                placeholder: (_, __) => const ShimmerBox(width: 130, height: 130, radius: 20),
+                                errorWidget: (_, __, ___) => Image.asset(
                                   'assets/images/app_icon.png',
                                   width: 130,
                                   height: 130,
@@ -1530,8 +1511,8 @@ class _LanguageTrendingSection extends ConsumerWidget {
                         const SizedBox(height: 8),
                         Text(
                           track.title,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1553,11 +1534,12 @@ class _LanguageTrendingSection extends ConsumerWidget {
                   ),
                 );
               },
-            ),
+            );
+          },
           ),
         ),
+        ),  // RepaintBoundary
       ],
     );
   }
 }
-

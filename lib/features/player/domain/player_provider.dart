@@ -4,6 +4,7 @@ import 'package:audio_service/audio_service.dart';
 import '../../../shared/models/track_model.dart';
 import '../../../shared/services/audio_handler.dart';
 import '../../library/domain/library_provider.dart';
+import 'audio_effects_provider.dart';
 
 // Provided via override in main.dart
 final audioHandlerProvider = Provider<RaagaAudioHandler>((ref) {
@@ -92,6 +93,18 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
         );
       }
     });
+
+    // Listen to Android Audio Session ID for Native DSP Effects
+    handler.androidAudioSessionIdStream.listen((sessionId) {
+      if (sessionId != null) {
+        _ref.read(audioEffectsProvider.notifier).setAudioSessionId(sessionId);
+      }
+    });
+
+    // Wire 8D pan callback → audio handler for real L/R stereo volume splitting
+    _ref.read(audioEffectsProvider.notifier).onPanUpdate = (pan, depth) {
+      handler.apply8DPan(pan, depth);
+    };
   }
 
   Future<void> play(TrackModel track, {List<TrackModel>? queue}) async {

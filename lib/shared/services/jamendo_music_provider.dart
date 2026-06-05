@@ -19,7 +19,7 @@ class JamendoMusicProvider implements MusicProvider {
   String get sourceName => 'jamendo';
 
   @override
-  Future<List<TrackModel>> search(String query, {int limit = 20}) async {
+  Future<List<TrackModel>> search(String query, {int limit = 20, int page = 1}) async {
     try {
       final response = await _dio.get(
         '${ApiConfig.jamendoBaseUrl}/tracks',
@@ -27,6 +27,7 @@ class JamendoMusicProvider implements MusicProvider {
           'client_id': ApiKeys.jamendoClientId,
           'format': 'json',
           'limit': limit,
+          'offset': (page - 1) * limit,
           'search': query,
           'audioformat': 'mp32',
           'include': 'musicinfo',

@@ -103,7 +103,21 @@ class RaagaAudioHandler extends BaseAudioHandler
   Stream<Duration> get positionStream => _player.positionStream;
   Stream<Duration?> get durationStream => _player.durationStream;
   Stream<Duration> get bufferedPositionStream => _player.bufferedPositionStream;
+  Stream<int?> get androidAudioSessionIdStream => _player.androidAudioSessionIdStream;
   bool get playing => _player.playing;
+
+  /// Apply subtle 8D depth cue via just_audio volume.
+  /// The real rotation comes from Android EQ/Virtualizer (native side).
+  /// Here we just apply a very gentle loudness depth cue — "behind" = slightly quieter.
+  /// Range: 0.88–1.0 (never mutes, never sounds like pumping).
+  void apply8DPan(double pan, double depth) {
+    try {
+      // depth: 1.0 = "in front" (loudest), 0.0 = "behind" (slightly quieter)
+      // Only 12% variation in volume — subtle depth cue, not an obvious pump.
+      final volumeLevel = (0.88 + depth * 0.12).clamp(0.88, 1.0);
+      _player.setVolume(volumeLevel);
+    } catch (_) {}
+  }
 
   void _broadcastState(PlaybackEvent event) {
     final playing = _player.playing;
@@ -127,5 +141,23 @@ class RaagaAudioHandler extends BaseAudioHandler
       bufferedPosition: _player.bufferedPosition,
       speed: _player.speed,
     ));
+  }
+
+  /// Called when the user swipes the app away from the Recents screen.
+  /// Default audio_service behavior would call stop() — we override to
+  /// do NOTHING so music keeps playing in the background.
+  @override
+  Future<void> onTaskRemoved() async {
+    // Intentionally blank — music continues after swipe-from-recents.
+    debugPrint('RaagaAudioHandler: Task removed — keeping playback alive.');
+  }
+
+  /// Called when user explicitly swipes away the media notification.
+  /// Only then do we actually stop and release resources.
+  @override
+  Future<void> onNotificationDeleted() async {
+    debugPrint('RaagaAudioHandler: Notification dismissed — stopping.');
+    await _player.stop();
+    await super.onNotificationDeleted();
   }
 }

@@ -8,7 +8,8 @@ abstract class MusicProvider {
   String get sourceName;
 
   /// Search for tracks matching [query].
-  Future<List<TrackModel>> search(String query, {int limit = 20});
+  /// [page] allows paginating results to get different batches from the backend.
+  Future<List<TrackModel>> search(String query, {int limit = 20, int page = 1});
 
   /// Get trending tracks in a specific [language] (e.g., 'hindi', 'tamil').
   Future<List<TrackModel>> getTrending(String language, {int limit = 20});

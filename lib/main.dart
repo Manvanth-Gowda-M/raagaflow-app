@@ -17,42 +17,55 @@ void main() async {
   // Init Hive local DB
   await HiveService.init();
 
-  // Request notification permissions at startup dynamically
   if (kIsWeb) {
     await WebNotificationService.requestPermission();
   } else {
+    // Request notification permission
     try {
-      final status = await Permission.notification.status;
-      if (status.isDenied || status.isLimited) {
+      final notifStatus = await Permission.notification.status;
+      if (!notifStatus.isGranted) {
         await Permission.notification.request();
       }
     } catch (e) {
-      debugPrint('Error requesting notification permission on native: $e');
+      debugPrint('Notification permission error: $e');
+    }
+
+    // Battery optimization exemption — needed for OnePlus/OxygenOS so
+    // the OS doesn't kill the background playback service.
+    try {
+      final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
+      if (!batteryStatus.isGranted) {
+        await Permission.ignoreBatteryOptimizations.request();
+      }
+    } catch (e) {
+      debugPrint('Battery opt not available: $e');
     }
   }
 
   // Init audio service
-  // On web: AudioService background tasks are not supported — use direct handler
-  // On native: Use AudioService.init for background playback & lock-screen controls
   RaagaAudioHandler audioHandler;
   if (kIsWeb) {
-    // Web: create handler directly (no background service needed)
     debugPrint('Web: Using direct audio handler (no background service)');
     audioHandler = RaagaAudioHandler(AudioPlayer(), StreamResolver());
   } else {
     try {
       audioHandler = await AudioService.init(
         builder: () => RaagaAudioHandler(AudioPlayer(), StreamResolver()),
-        config: AudioServiceConfig(
+        config: const AudioServiceConfig(
           androidNotificationChannelId: 'com.raagaflow.music.channel',
           androidNotificationChannelName: 'RaagaFlow Music',
+          // false = user can dismiss the notification (normal behaviour, was working)
           androidNotificationOngoing: false,
-          androidStopForegroundOnPause: true,
+          // false = foreground service stays alive when paused → keeps background play
+          androidStopForegroundOnPause: false,
+          androidNotificationIcon: 'mipmap/ic_launcher',
+          androidShowNotificationBadge: true,
+          notificationColor: Color(0xFFE57373),
+          preloadArtwork: true,
         ),
       );
     } catch (e) {
       debugPrint('AudioService.init failed, using direct handler: $e');
-      // Fallback: create handler without background service
       audioHandler = RaagaAudioHandler(AudioPlayer(), StreamResolver());
     }
   }

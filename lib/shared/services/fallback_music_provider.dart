@@ -18,11 +18,11 @@ class FallbackMusicProvider implements MusicProvider {
   String get sourceName => _providers.first.sourceName;
 
   @override
-  Future<List<TrackModel>> search(String query, {int limit = 20}) async {
+  Future<List<TrackModel>> search(String query, {int limit = 20, int page = 1}) async {
     for (final provider in _providers) {
       try {
         debugPrint('FallbackMusicProvider: Trying ${provider.sourceName}...');
-        final results = await provider.search(query, limit: limit);
+        final results = await provider.search(query, limit: limit, page: page);
         if (results.isNotEmpty) {
           debugPrint('FallbackMusicProvider: ${provider.sourceName} returned ${results.length} results');
           return results;
