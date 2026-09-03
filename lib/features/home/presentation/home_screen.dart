@@ -73,6 +73,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _showThemePicker() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: AppColors.surfaceContainerLow,
       shape: const RoundedRectangleBorder(
@@ -303,6 +304,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _showNotificationPanel() {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
@@ -349,7 +351,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Row(
                       children: [
                         Text(
-                          'RaagaFlow 🌸',
+                          'RaagaFlow',
                           style: TextStyle(
                             color: AppColors.textPrimary,
                             fontFamily: 'Pretendard',
@@ -382,8 +384,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(height: 24),
                     Text(
                       _userName.isNotEmpty
-                          ? '$_greeting, $_userName 🌸'
-                          : '$_greeting 🌸',
+                          ? '$_greeting, $_userName'
+                          : _greeting,
                       style: AppTextStyles.headline2.copyWith(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
@@ -1349,39 +1351,33 @@ class _LanguageTrackSection extends ConsumerWidget {
   final AsyncValue<List<TrackModel>> tracksAsync;
   final String language;
   final String title;
-  final String? emojiOverride;
 
   const _LanguageTrackSection({
     required this.tracksAsync,
     required this.language,
     required this.title,
     required String searchQuery,  // kept for call-site compat, unused
-    this.emojiOverride,
+    String? emojiOverride,        // kept for call-site compat, unused
   });
 
-  // Language-specific emoji flags/icons for a premium feel
-  static const _langEmoji = {
-    'hindi':      '🎵',
-    'tamil':      '🎶',
-    'telugu':     '🎸',
-    'kannada':    '🥁',
-    'malayalam':  '🎷',
-    'punjabi':    '🎺',
-    'bengali':    '🪗',
-    'marathi':    '🎻',
-    'gujarati':   '🪘',
-    'bhojpuri':   '🎙️',
-    'haryanvi':   '🎤',
-    'rajasthani': '🪕',
-    'odia':       '🎵',
-    'english':    '🌍',
-    'urdu':       '🌙',
-  };
+  IconData get _sectionIcon {
+    final lower = title.toLowerCase();
+    if (lower.contains('trending') || lower.contains('popular')) {
+      return Icons.local_fire_department_rounded;
+    } else if (lower.contains('famous')) {
+      return Icons.star_rounded;
+    } else if (lower.contains('movie')) {
+      return Icons.theaters_rounded;
+    } else if (lower.contains('official')) {
+      return Icons.verified_rounded;
+    } else if (lower.contains('global')) {
+      return Icons.public_rounded;
+    }
+    return Icons.music_note_rounded;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final emoji = emojiOverride ?? _langEmoji[language] ?? '🎵';
-
     // Hide the whole section when data is empty or errored — no blank gaps
     if (tracksAsync is AsyncData && (tracksAsync.value?.isEmpty ?? true)) {
       return const SizedBox.shrink();
@@ -1396,16 +1392,24 @@ class _LanguageTrackSection extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(24, 28, 24, 14),
           child: Row(
             children: [
-              // Coloured language pill
+              // Premium vector icon badge
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
                   gradient: AppColors.accentGradient,
-                  borderRadius: BorderRadius.circular(20),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.accent.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  emoji,
-                  style: const TextStyle(fontSize: 14),
+                child: Icon(
+                  _sectionIcon,
+                  color: Colors.black,
+                  size: 15,
                 ),
               ),
               const SizedBox(width: 10),

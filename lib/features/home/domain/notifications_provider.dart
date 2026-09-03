@@ -96,7 +96,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
       // 1. Welcome Notification
       newList.add(NotificationModel(
         id: 'system_welcome',
-        title: 'Welcome to RaagaFlow 🌸',
+        title: 'Welcome to RaagaFlow',
         subtitle: 'Experience premium, high-res audio streaming tailored for you.',
         time: 'Just now',
         isNew: true,
@@ -115,7 +115,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
             final topTrack = trendingTracks.first;
             newList.add(NotificationModel(
               id: 'trending_${primaryLang}_${topTrack.id}',
-              title: 'Trending in ${primaryLang[0].toUpperCase()}${primaryLang.substring(1)} 🔥',
+              title: 'Trending in ${primaryLang[0].toUpperCase()}${primaryLang.substring(1)}',
               subtitle: 'Listen to "${topTrack.title}" by ${topTrack.artist} - currently hot!',
               time: '5 min ago',
               isNew: true,
@@ -139,7 +139,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
           final topNew = newTracks.first;
           newList.add(NotificationModel(
             id: 'new_release_${targetLang}_${topNew.id}',
-            title: 'New Release in ${targetLang[0].toUpperCase()}${targetLang.substring(1)} 🌸',
+            title: 'New Release in ${targetLang[0].toUpperCase()}${targetLang.substring(1)}',
             subtitle: '"${topNew.title}" by ${topNew.artist} just dropped! Stream now.',
             time: '15 min ago',
             isNew: true,
@@ -160,7 +160,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
         final lastTrack = history.first;
         newList.add(NotificationModel(
           id: 'history_${lastTrack.id}',
-          title: 'Enjoyed "${lastTrack.title}"? 🎧',
+          title: 'Enjoyed "${lastTrack.title}"?',
           subtitle: 'Tap to listen again to ${lastTrack.artist} and similar hits.',
           time: '1 hr ago',
           isNew: false,
@@ -174,7 +174,7 @@ class NotificationsNotifier extends StateNotifier<NotificationsState> {
         // Fallback discovery
         newList.add(NotificationModel(
           id: 'system_discover',
-          title: 'Daily Mix Ready ⚡',
+          title: 'Daily Mix Ready',
           subtitle: 'Your personalized vibe playlist is ready for today.',
           time: '2 hrs ago',
           isNew: false,

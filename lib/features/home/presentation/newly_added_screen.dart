@@ -70,7 +70,7 @@ class _NewlyAddedScreenState extends ConsumerState<NewlyAddedScreen>
                               shaderCallback: (bounds) =>
                                   AppColors.premiumGradient.createShader(bounds),
                               child: Text(
-                                'Newly Added 🎵',
+                                'Newly Added',
                                 style: AppTextStyles.headline1.copyWith(
                                   color: Colors.white,
                                   fontSize: 24,

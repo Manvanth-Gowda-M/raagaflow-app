@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/text_styles.dart';
 import '../../../core/utils/debouncer.dart';
+import '../../../shared/models/track_model.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../../../shared/widgets/shimmer_track_tile.dart';
 import '../../../shared/widgets/track_tile.dart';
+import '../../downloads/domain/download_provider.dart';
 import '../domain/search_provider.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -20,20 +22,30 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _debouncer = Debouncer(milliseconds: 400);
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   void dispose() {
     _controller.dispose();
     _debouncer.dispose();
     super.dispose();
   }
 
+  List<TrackModel> _searchOffline(String query) {
+    if (query.isEmpty) return [];
+    final q = query.toLowerCase();
+    final downloads = ref.read(downloadProvider).downloads;
+    return downloads
+        .where((d) =>
+            d.title.toLowerCase().contains(q) ||
+            d.artist.toLowerCase().contains(q) ||
+            (d.album?.toLowerCase().contains(q) ?? false))
+        .map((d) => d.toTrack())
+        .toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final searchState = ref.watch(searchProvider);
+    final downloadState = ref.watch(downloadProvider);
+    final isOffline = !downloadState.isOnline;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -45,36 +57,56 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ShaderMask(
-                    shaderCallback: (bounds) =>
-                        AppColors.accentGradient.createShader(bounds),
-                    child: Text('Search',
-                        style: AppTextStyles.headline1
-                            .copyWith(color: Colors.white)),
+                  Row(
+                    children: [
+                      ShaderMask(
+                        shaderCallback: (bounds) =>
+                            AppColors.accentGradient.createShader(bounds),
+                        child: Text(
+                          isOffline ? 'Offline Search' : 'Search',
+                          style: AppTextStyles.headline1.copyWith(color: Colors.white),
+                        ),
+                      ),
+                      if (isOffline) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'OFFLINE',
+                            style: TextStyle(
+                              color: AppColors.accent,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   const SizedBox(height: 12),
                   Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
                       color: AppColors.surfaceContainerHigh,
-                      border: Border.all(
-                          color: AppColors.divider, width: 0.5),
+                      border: Border.all(color: AppColors.divider, width: 0.5),
                     ),
                     child: TextField(
                       controller: _controller,
                       autofocus: false,
-                      style:
-                          TextStyle(color: AppColors.textPrimary),
+                      style: TextStyle(color: AppColors.textPrimary),
                       decoration: InputDecoration(
-                        hintText: 'Songs, artists, albums...',
-                        hintStyle:
-                            TextStyle(color: AppColors.textHint),
+                        hintText: isOffline
+                            ? 'Search downloaded songs...'
+                            : 'Songs, artists, albums...',
+                        hintStyle: TextStyle(color: AppColors.textHint),
                         prefixIcon: ShaderMask(
                           shaderCallback: (bounds) =>
-                              AppColors.accentGradient
-                                  .createShader(bounds),
-                          child: const Icon(Icons.search_rounded,
-                              color: Colors.white),
+                              AppColors.accentGradient.createShader(bounds),
+                          child: const Icon(Icons.search_rounded, color: Colors.white),
                         ),
                         suffixIcon: _controller.text.isNotEmpty
                             ? IconButton(
@@ -82,9 +114,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                                     color: AppColors.textHint, size: 20),
                                 onPressed: () {
                                   _controller.clear();
-                                  ref
-                                      .read(searchProvider.notifier)
-                                      .clear();
+                                  ref.read(searchProvider.notifier).clear();
                                   setState(() {});
                                 },
                               )
@@ -95,9 +125,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       ),
                       onChanged: (q) {
                         setState(() {});
-                        _debouncer.run(() {
-                          ref.read(searchProvider.notifier).search(q);
-                        });
+                        if (!isOffline) {
+                          _debouncer.run(() {
+                            ref.read(searchProvider.notifier).search(q);
+                          });
+                        }
                       },
                     ),
                   ),
@@ -105,10 +137,56 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               ),
             ),
             Expanded(
-              child: _buildBody(searchState),
+              child: isOffline
+                  ? _buildOfflineBody(_controller.text.trim())
+                  : _buildBody(searchState),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildOfflineBody(String query) {
+    if (query.isEmpty) {
+      final downloads = ref.watch(downloadProvider).downloads;
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.offline_pin_rounded, size: 56, color: AppColors.accent),
+            const SizedBox(height: 16),
+            Text('Offline Search', style: AppTextStyles.sectionTitle),
+            const SizedBox(height: 4),
+            Text(
+              '${downloads.length} downloaded songs ready to search',
+              style: AppTextStyles.trackArtist,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final results = _searchOffline(query);
+    if (results.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off_rounded, size: 48, color: AppColors.textHint),
+            const SizedBox(height: 12),
+            Text('No downloaded songs match "$query"', style: AppTextStyles.trackArtist),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 180),
+      itemCount: results.length,
+      itemBuilder: (_, i) => TrackTile(
+        track: results[i],
+        queue: results,
       ),
     );
   }
@@ -126,8 +204,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   size: 56, color: Colors.white),
             ),
             const SizedBox(height: 16),
-            Text('Discover Indian music',
-                style: AppTextStyles.sectionTitle),
+            Text('Discover Indian music', style: AppTextStyles.sectionTitle),
             const SizedBox(height: 4),
             Text('Search for songs, artists, or albums',
                 style: AppTextStyles.trackArtist),
@@ -137,6 +214,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               runSpacing: 8,
               alignment: WrapAlignment.center,
               children: [
+                'Kannada Lofi',
                 'Arijit Singh',
                 'AR Rahman',
                 'Shreya Ghoshal',
@@ -144,7 +222,6 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                 'Anirudh',
                 'Diljit Dosanjh',
                 'Pritam',
-                'Atif Aslam',
               ]
                   .map((q) => GestureDetector(
                         onTap: () {

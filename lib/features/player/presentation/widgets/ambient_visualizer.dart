@@ -27,16 +27,16 @@ class _AmbientVisualizerState extends State<AmbientVisualizer>
   void initState() {
     super.initState();
 
-    // Fast orbital loop for particles
+    // Orbital loop for 3D gyroscope rings and glowing satellite particles
     _orbitCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 4),
+      duration: const Duration(seconds: 6),
     );
 
-    // Deep breathing pulse for the ambient liquid background glow
+    // Deep organic breathing pulse
     _pulseCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2500),
+      duration: const Duration(milliseconds: 3200),
     );
 
     if (widget.isPlaying) {
@@ -72,44 +72,46 @@ class _AmbientVisualizerState extends State<AmbientVisualizer>
 
     return Center(
       child: SizedBox(
-        width: 320,
-        height: 320,
+        width: 330,
+        height: 330,
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // ─── Layer 1: Ambient 3D Glowing Pulsing Aura ───
+            // ─── Layer 1: Ambient Liquid Background Aura ───
             AnimatedBuilder(
               animation: _pulseCtrl,
               builder: (context, child) {
-                final scale = 1.0 + (_pulseCtrl.value * 0.12);
-                final opacity = 0.15 + (_pulseCtrl.value * 0.18);
-                
+                final scale = 1.0 + (_pulseCtrl.value * 0.15);
+                final opacity = 0.22 + (_pulseCtrl.value * 0.20);
+
                 return Container(
-                  width: 200 * scale,
-                  height: 200 * scale,
+                  width: 250 * scale,
+                  height: 250 * scale,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     gradient: RadialGradient(
                       colors: [
                         AppColors.accent.withValues(alpha: opacity),
-                        AppColors.primary.withValues(alpha: 0.0),
+                        AppColors.secondary.withValues(alpha: opacity * 0.4),
+                        Colors.transparent,
                       ],
+                      stops: const [0.0, 0.55, 1.0],
                     ),
                   ),
                 );
               },
             ),
 
-            // ─── Layer 2: 3D Holographic Orbiting Gyroscope Rings ───
+            // ─── Layer 2: 3D Holographic Gyroscopic Orbits ───
             AnimatedBuilder(
               animation: _orbitCtrl,
               builder: (context, child) {
                 return CustomPaint(
-                  size: const Size(320, 320),
+                  size: const Size(330, 330),
                   painter: _GyroscopePainter(
                     angle: _orbitCtrl.value * 2 * pi,
                     accentColor: AppColors.accent,
-                    primaryColor: AppColors.primary,
+                    secondaryColor: AppColors.secondary,
                     tertiaryColor: AppColors.tertiary,
                     isDark: isDark,
                   ),
@@ -117,69 +119,79 @@ class _AmbientVisualizerState extends State<AmbientVisualizer>
               },
             ),
 
-            // ─── Layer 3: Floating Hovering Album Art Card ───
+            // ─── Layer 3: High-Res 3D Squircle Album Artwork ───
             AnimatedBuilder(
               animation: _pulseCtrl,
               builder: (context, child) {
-                final hoverOffset = sin(_pulseCtrl.value * pi) * 6.0;
-                
+                final hoverOffset = sin(_pulseCtrl.value * pi) * 4.0;
+                final scale = 0.985 + (_pulseCtrl.value * 0.025);
+
                 return Transform.translate(
                   offset: Offset(0, -hoverOffset),
-                  child: Container(
-                    width: 170,
-                    height: 170,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(32),
-                      boxShadow: [
-                        // Deep luxurious 3D drop shadow simulating hovering height
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.6 : 0.22),
-                          blurRadius: 28,
-                          spreadRadius: 2,
-                          offset: Offset(0, 16 + hoverOffset),
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Container(
+                      width: 230,
+                      height: 230,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.14),
+                          width: 1.0,
                         ),
-                        // Soft ambient glowing highlight
-                        BoxShadow(
-                          color: AppColors.accent.withValues(alpha: 0.12),
-                          blurRadius: 16,
-                          spreadRadius: -4,
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(32),
-                      child: Stack(
-                        children: [
-                          Positioned.fill(
-                            child: CachedNetworkImage(
-                              imageUrl: widget.imageUrl,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => const ShimmerBox(width: 170, height: 170),
-                              errorWidget: (_, __, ___) => Container(
-                                color: AppColors.surfaceContainerHigh,
-                                child: Icon(Icons.music_note,
-                                    size: 50, color: AppColors.textHint),
-                              ),
-                            ),
+                        boxShadow: [
+                          // Deep dimensional ambient drop shadow
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.65 : 0.25),
+                            blurRadius: 36,
+                            spreadRadius: 4,
+                            offset: Offset(0, 18 + hoverOffset),
                           ),
-                          // Subtle diagonal glass shimmer overlay
-                          Positioned.fill(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [
-                                    Colors.white.withValues(alpha: 0.08),
-                                    Colors.transparent,
-                                    Colors.black.withValues(alpha: 0.05),
-                                  ],
-                                  stops: const [0.0, 0.6, 1.0],
+                          // Colored ambient rim glow
+                          BoxShadow(
+                            color: AppColors.accent.withValues(alpha: 0.35),
+                            blurRadius: 32,
+                            spreadRadius: 2,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(27),
+                        child: Stack(
+                          children: [
+                            Positioned.fill(
+                              child: CachedNetworkImage(
+                                imageUrl: widget.imageUrl,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) =>
+                                    const ShimmerBox(width: 230, height: 230, radius: 28),
+                                errorWidget: (_, __, ___) => Container(
+                                  color: AppColors.surfaceContainerHigh,
+                                  child: Icon(Icons.music_note_rounded,
+                                      size: 60, color: AppColors.textHint),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                            // Subtle glass sheen reflection overlay
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.white.withValues(alpha: 0.12),
+                                      Colors.transparent,
+                                      Colors.black.withValues(alpha: 0.15),
+                                    ],
+                                    stops: const [0.0, 0.45, 1.0],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -193,18 +205,17 @@ class _AmbientVisualizerState extends State<AmbientVisualizer>
   }
 }
 
-// Custom painter to draw beautiful 3D tilted gyroscope rings with moving glowing beads
 class _GyroscopePainter extends CustomPainter {
   final double angle;
   final Color accentColor;
-  final Color primaryColor;
+  final Color secondaryColor;
   final Color tertiaryColor;
   final bool isDark;
 
   _GyroscopePainter({
     required this.angle,
     required this.accentColor,
-    required this.primaryColor,
+    required this.secondaryColor,
     required this.tertiaryColor,
     required this.isDark,
   });
@@ -212,64 +223,71 @@ class _GyroscopePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    
-    // Draw three gyroscopic rings (Inner, Middle, Outer) with 3D tilts
-    // Ring 1 (Accent): radius 108, tilt X, Y
+
+    // Ring 1 (Inner Accent Glow): radius 136
     _drawTiltedRing(
-      canvas, 
-      center, 
-      radius: 106, 
-      tiltX: 0.5, 
-      tiltY: 0.35, 
-      ringColor: accentColor.withValues(alpha: 0.25),
+      canvas,
+      center,
+      radius: 136,
+      tiltX: 0.55,
+      tiltY: 0.35,
+      ringColor: accentColor.withValues(alpha: 0.35),
       beadColor: accentColor,
-      beadAngle: angle * 1.2, // Speeds up
+      beadAngle: angle * 1.2,
+      beadRadius: 4.5,
     );
 
-    // Ring 2 (Primary): radius 124, tilt X, Y
+    // Ring 2 (Middle Secondary Coral): radius 150
     _drawTiltedRing(
-      canvas, 
-      center, 
-      radius: 124, 
-      tiltX: -0.45, 
-      tiltY: -0.4, 
-      ringColor: primaryColor.withValues(alpha: 0.2),
-      beadColor: primaryColor,
-      beadAngle: -angle * 0.8, // Reverse rotation
+      canvas,
+      center,
+      radius: 150,
+      tiltX: -0.45,
+      tiltY: -0.40,
+      ringColor: secondaryColor.withValues(alpha: 0.30),
+      beadColor: secondaryColor,
+      beadAngle: -angle * 0.9,
+      beadRadius: 4.0,
     );
 
-    // Ring 3 (Tertiary): radius 142, tilt X, Y
+    // Ring 3 (Outer Tertiary Aqua/Gold): radius 162
     _drawTiltedRing(
-      canvas, 
-      center, 
-      radius: 142, 
-      tiltX: 0.6, 
-      tiltY: -0.22, 
-      ringColor: tertiaryColor.withValues(alpha: 0.15),
+      canvas,
+      center,
+      radius: 162,
+      tiltX: 0.65,
+      tiltY: -0.25,
+      ringColor: tertiaryColor.withValues(alpha: 0.25),
       beadColor: tertiaryColor,
-      beadAngle: angle * 0.5, // Slow glide
+      beadAngle: angle * 0.6,
+      beadRadius: 3.5,
     );
   }
 
   void _drawTiltedRing(
-    Canvas canvas, 
+    Canvas canvas,
     Offset center, {
-    required double radius, 
-    required double tiltX, 
-    required double tiltY, 
+    required double radius,
+    required double tiltX,
+    required double tiltY,
     required Color ringColor,
     required Color beadColor,
     required double beadAngle,
+    required double beadRadius,
   }) {
     final ringPaint = Paint()
       ..color = ringColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+      ..strokeWidth = 1.4;
 
-    // Calculate tilted coordinates using 3D projection formulas
+    final glowPaint = Paint()
+      ..color = ringColor.withValues(alpha: ringColor.a * 0.4)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.2;
+
     final path = Path();
-    const steps = 90;
-    
+    const steps = 36; // 36 steps provides smooth circle at 120fps with minimal GPU overhead
+
     for (int i = 0; i <= steps; i++) {
       final t = (i / steps) * 2 * pi;
       final point = _project3D(radius, t, tiltX, tiltY);
@@ -280,54 +298,57 @@ class _GyroscopePainter extends CustomPainter {
         path.lineTo(offset.dx, offset.dy);
       }
     }
-    
-    // Draw the 3D-angled glass ring path
+
+    canvas.drawPath(path, glowPaint);
     canvas.drawPath(path, ringPaint);
 
-    // Draw the moving glowing bead along the path
+    // Satellite Bead
     final beadOffset = center + _project3D(radius, beadAngle, tiltX, tiltY);
-    
-    final beadPaint = Paint()
-      ..color = beadColor
-      ..style = PaintingStyle.fill;
 
-    // Glow backing shadow
+    // Satellite Diffuse Halo
     canvas.drawCircle(
       beadOffset,
-      6.0,
-      Paint()
-        ..color = beadColor.withValues(alpha: 0.4)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+      beadRadius * 1.8,
+      Paint()..color = beadColor.withValues(alpha: 0.35),
     );
-    
-    // Core solid light bead
-    canvas.drawCircle(beadOffset, 3.5, beadPaint);
+
+    // Satellite Core
+    canvas.drawCircle(
+      beadOffset,
+      beadRadius,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.fill,
+    );
+    canvas.drawCircle(
+      beadOffset,
+      beadRadius,
+      Paint()
+        ..color = beadColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4,
+    );
   }
 
-  // 3D mathematical projection of a circular orbit given a camera tilt X and Y
   Offset _project3D(double radius, double theta, double tiltX, double tiltY) {
-    // 3D position on flat Z-plane
     final double x = radius * cos(theta);
     final double y = radius * sin(theta);
-    final double z = 0.0;
+    const double z = 0.0;
 
-    // Rotate around X-axis
     final double cosX = cos(tiltX);
     final double sinX = sin(tiltX);
     final double y1 = y * cosX - z * sinX;
-    
-    // Rotate around Y-axis
+
     final double cosY = cos(tiltY);
     final double sinY = sin(tiltY);
     final double x2 = x * cosY + y1 * sinY;
 
-    // Simple isometric projection
     return Offset(x2, y1);
   }
 
   @override
   bool shouldRepaint(covariant _GyroscopePainter oldDelegate) =>
-      oldDelegate.angle != angle || 
-      oldDelegate.accentColor != accentColor || 
-      oldDelegate.primaryColor != primaryColor;
+      oldDelegate.angle != angle ||
+      oldDelegate.accentColor != accentColor ||
+      oldDelegate.secondaryColor != secondaryColor;
 }

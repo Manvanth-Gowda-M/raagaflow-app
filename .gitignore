@@ -43,6 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/build/
+/android/.gradle/
+.gradle/
 
 # API Keys — never commit
 lib/core/constants/api_keys.dart

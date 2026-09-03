@@ -183,6 +183,16 @@ class SaavnMusicProvider implements MusicProvider {
     return search(query, limit: limit, page: 1);
   }
 
+  /// Get contextual song recommendations based on artist / genre / title for infinite autoplay
+  Future<List<TrackModel>> getRecommendations(TrackModel track, {int limit = 10}) async {
+    final query = track.artist.isNotEmpty && track.artist != 'Unknown'
+        ? '${track.artist.split(',').first.trim()} hit songs'
+        : '${track.title} radio hits';
+    debugPrint('SaavnMusicProvider: getRecommendations for "${track.title}" → "$query"');
+    final results = await search(query, limit: limit);
+    return results.where((t) => t.id != track.id).toList();
+  }
+
   Future<List<TrackModel>> _fetchTracks(String url) async {
     try {
       final response = await http.get(
@@ -229,13 +239,8 @@ class SaavnMusicProvider implements MusicProvider {
     final encryptedUrl = moreInfo['encrypted_media_url'] as String? ?? '';
     String streamUrl = '';
     if (encryptedUrl.isNotEmpty) {
+      // 96kbps AAC default for instant buffering & ~2MB low internet usage
       streamUrl = _decryptUrl(encryptedUrl);
-      // Replace quality to get 320kbps if available
-      if (moreInfo['320kbps'] == 'true' || moreInfo['320kbps'] == true) {
-        streamUrl = streamUrl.replaceAll('_96.mp4', '_320.mp4');
-      } else {
-        streamUrl = streamUrl.replaceAll('_96.mp4', '_160.mp4');
-      }
     }
 
     debugPrint('SaavnMusicProvider: Decrypted URL = $streamUrl');

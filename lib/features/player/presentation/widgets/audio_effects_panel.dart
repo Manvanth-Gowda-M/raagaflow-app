@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/audio_effects_provider.dart';
+import '../../domain/spatial_audio_provider.dart';
+import '../../domain/player_provider.dart';
+import '../../domain/sleep_timer_provider.dart';
+import 'spatial_audio_sheet.dart';
+import 'sleep_timer_sheet.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class AudioEffectsPanel extends ConsumerWidget {
@@ -67,40 +72,59 @@ class AudioEffectsPanel extends ConsumerWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // ─── 8D Audio ─────────────────────────────────────────────
-                  _EffectCard(
-                    icon: Icons.headphones_rounded,
-                    title: '8D Audio',
-                    subtitle: '🎧 Flagship · 360° binaural rotation · Use headphones',
-                    isActive: s.is8DEnabled,
-                    intensity: s.intensity8D,
-                    onToggle: () {
-                      n.toggle8D();
-                      if (!s.is8DEnabled) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Row(
-                              children: [
-                                Icon(Icons.headphones, color: Colors.black, size: 20),
-                                SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    '🎧 Wear headphones for the full 8D experience!',
-                                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
-                                  ),
+                  // ─── 8D Audio (Spatial Audio Engine) ──────────────────────
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final spatialState = ref.watch(spatialAudioProvider);
+                      final spatialNotifier = ref.read(spatialAudioProvider.notifier);
+
+                      return _EffectCard(
+                        icon: Icons.spatial_audio_rounded,
+                        title: 'Live 8D Spatial Audio',
+                        subtitle: 'Flagship · ${spatialState.activePreset.displayName} · 3D binaural radar',
+                        isActive: spatialState.isEnabled,
+                        intensity: null,
+                        trailingActionLabel: '3D Radar & Presets',
+                        onTrailingAction: () {
+                          Navigator.pop(context);
+                          showModalBottomSheet(
+                            context: context,
+                            backgroundColor: Colors.transparent,
+                            barrierColor: Colors.black.withValues(alpha: 0.75),
+                            isScrollControlled: true,
+                            useSafeArea: false,
+                            builder: (_) => const SpatialAudioSheet(),
+                          );
+                        },
+                        onToggle: () {
+                          spatialNotifier.toggle8D();
+                          if (!spatialState.isEnabled) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Row(
+                                  children: [
+                                    Icon(Icons.headphones_rounded, color: Colors.black, size: 20),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        'Wear headphones for the full 8D spatial experience!',
+                                        style: TextStyle(color: Colors.black, fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                            backgroundColor: AppColors.accent,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                            duration: const Duration(seconds: 4),
-                            margin: const EdgeInsets.all(16),
-                          ),
-                        );
-                      }
+                                backgroundColor: AppColors.accent,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                duration: const Duration(seconds: 4),
+                                margin: const EdgeInsets.all(16),
+                              ),
+                            );
+                          }
+                        },
+                        onIntensityChange: null,
+                      );
                     },
-                    onIntensityChange: (i) => n.set8DIntensity(i),
                   ),
 
                   // ─── Bass Boost ────────────────────────────────────────────
@@ -146,6 +170,148 @@ class AudioEffectsPanel extends ConsumerWidget {
                     onToggle: () => n.toggleReverb(),
                     onIntensityChange: null,
                   ),
+                  const SizedBox(height: 12),
+
+                  // ─── Playback Speed Selector ───────────────────────────────
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final playerState = ref.watch(playerProvider);
+                      final currentSpeed = playerState.playbackSpeed;
+
+                      return Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceContainerHigh.withValues(alpha: 0.5),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: AppColors.divider.withValues(alpha: 0.2),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accent.withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.speed_rounded, color: AppColors.accent, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Playback Speed',
+                                      style: TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${currentSpeed}x · Pitch-adjusted tempo',
+                                      style: TextStyle(color: AppColors.textHint, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                _speedChip(context, ref, '0.8x', 0.8, currentSpeed),
+                                const SizedBox(width: 8),
+                                _speedChip(context, ref, '1.0x', 1.0, currentSpeed),
+                                const SizedBox(width: 8),
+                                _speedChip(context, ref, '1.2x', 1.2, currentSpeed),
+                                const SizedBox(width: 8),
+                                _speedChip(context, ref, '1.5x', 1.5, currentSpeed),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ─── Sleep Timer Quick Tile ────────────────────────────────
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final timer = ref.watch(sleepTimerProvider);
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                          SleepTimerSheet.show(context);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: BoxDecoration(
+                            color: timer.isActive
+                                ? AppColors.accent.withValues(alpha: 0.1)
+                                : AppColors.surfaceContainerHigh.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(
+                              color: timer.isActive
+                                  ? AppColors.accent.withValues(alpha: 0.4)
+                                  : AppColors.divider.withValues(alpha: 0.2),
+                              width: 1.0,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: timer.isActive
+                                      ? AppColors.accent
+                                      : AppColors.accent.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.bedtime_rounded,
+                                  color: timer.isActive ? Colors.black : AppColors.accent,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Sleep Timer',
+                                      style: TextStyle(
+                                        color: AppColors.textPrimary,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Text(
+                                      timer.isActive
+                                          ? 'Active: ${timer.formattedRemaining} remaining (Smooth fade-out)'
+                                          : 'Fade out & pause automatically',
+                                      style: TextStyle(
+                                        color: timer.isActive ? AppColors.accent : AppColors.textHint,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.chevron_right_rounded, color: AppColors.textHint, size: 20),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
 
                   const SizedBox(height: 8),
                 ],
@@ -153,6 +319,37 @@ class AudioEffectsPanel extends ConsumerWidget {
             ),
           ),
         );
+  }
+
+  Widget _speedChip(BuildContext context, WidgetRef ref, String label, double speed, double current) {
+    final isSelected = (speed - current).abs() < 0.05;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          ref.read(playerProvider.notifier).setSpeed(speed);
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.accent : AppColors.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected ? AppColors.accent : AppColors.divider.withValues(alpha: 0.2),
+            ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.black : AppColors.textPrimary,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -168,6 +365,8 @@ class _EffectCard extends StatelessWidget {
   final EffectIntensity? intensity;
   final VoidCallback onToggle;
   final void Function(EffectIntensity)? onIntensityChange;
+  final String? trailingActionLabel;
+  final VoidCallback? onTrailingAction;
 
   const _EffectCard({
     required this.icon,
@@ -177,6 +376,8 @@ class _EffectCard extends StatelessWidget {
     required this.onToggle,
     this.intensity,
     this.onIntensityChange,
+    this.trailingActionLabel,
+    this.onTrailingAction,
   });
 
   @override
@@ -262,6 +463,36 @@ class _EffectCard extends StatelessWidget {
                 ),
               ),
             ),
+
+            // ── Trailing Action Button (e.g. 3D Radar & Presets) ──
+            if (isActive && trailingActionLabel != null && onTrailingAction != null) ...[
+              Divider(height: 1, color: AppColors.accent.withValues(alpha: 0.2), indent: 16, endIndent: 16),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton.icon(
+                      onPressed: onTrailingAction,
+                      icon: Icon(Icons.radar_rounded, size: 16, color: AppColors.accent),
+                      label: Text(
+                        trailingActionLabel!,
+                        style: TextStyle(
+                          color: AppColors.accent,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        backgroundColor: AppColors.accent.withValues(alpha: 0.12),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             // ── Intensity picker (only shown when active and intensity is not null) ──
             if (isActive && intensity != null && onIntensityChange != null) ...[

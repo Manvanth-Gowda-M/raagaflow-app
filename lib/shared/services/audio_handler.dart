@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../features/player/data/stream_resolver.dart';
 import '../models/track_model.dart';
+import '../models/download_model.dart';
+import 'hive_service.dart';
 
 class RaagaAudioHandler extends BaseAudioHandler
     with QueueHandler, SeekHandler {
@@ -54,20 +57,39 @@ class RaagaAudioHandler extends BaseAudioHandler
     ));
 
     try {
-      final url = await _resolver.resolve(track);
-      await _player.setAudioSource(
-        AudioSource.uri(
-          Uri.parse(url),
-          // Web browsers cannot set custom headers on audio elements (CORS).
-          // Headers are only sent on native platforms (Android/iOS).
-          headers: kIsWeb
-              ? null
-              : {
-                  'User-Agent':
-                      'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36',
-                },
-        ),
+      // ─── 1. Check if track is downloaded locally ───
+      final downloaded = HiveService.downloads.values.cast<DownloadedSong?>().firstWhere(
+        (d) => d?.songId == track.id,
+        orElse: () => null,
       );
+
+      if (downloaded != null && !kIsWeb) {
+        final localFile = File(downloaded.localPath);
+        if (await localFile.exists()) {
+          debugPrint('RaagaAudioHandler: Playing offline local file: ${downloaded.localPath}');
+          await _player.setAudioSource(AudioSource.file(downloaded.localPath));
+          await _player.play();
+          return;
+        }
+      }
+
+      // ─── 2. Otherwise resolve stream over network ───
+      final url = await _resolver.resolve(track);
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        await _player.setAudioSource(
+          AudioSource.uri(
+            Uri.parse(url),
+            headers: kIsWeb
+                ? null
+                : {
+                    'User-Agent':
+                        'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36',
+                  },
+          ),
+        );
+      } else {
+        await _player.setAudioSource(AudioSource.file(url));
+      }
       await _player.play();
     } catch (e, stack) {
       debugPrint('Playback error in RaagaAudioHandler: $e');
@@ -105,6 +127,32 @@ class RaagaAudioHandler extends BaseAudioHandler
   Stream<Duration> get bufferedPositionStream => _player.bufferedPositionStream;
   Stream<int?> get androidAudioSessionIdStream => _player.androidAudioSessionIdStream;
   bool get playing => _player.playing;
+
+  /// Set player volume (e.g. for smooth sleep timer fade-out)
+  Future<void> setVolume(double volume) async {
+    try {
+      await _player.setVolume(volume.clamp(0.0, 1.0));
+    } catch (e) {
+      debugPrint('RaagaAudioHandler setVolume error: $e');
+    }
+  }
+
+  /// Set playback speed (e.g. 0.8x, 1.0x, 1.25x, 1.5x)
+  @override
+  Future<void> setSpeed(double speed) async {
+    try {
+      await _player.setSpeed(speed.clamp(0.5, 2.0));
+    } catch (e) {
+      debugPrint('RaagaAudioHandler setSpeed error: $e');
+    }
+  }
+
+  /// Eagerly pre-cache next track stream URL for instant skipping
+  Future<void> precacheTrack(TrackModel track) async {
+    try {
+      _resolver.resolve(track).catchError((_) => '');
+    } catch (_) {}
+  }
 
   /// Apply subtle 8D depth cue via just_audio volume.
   /// The real rotation comes from Android EQ/Virtualizer (native side).

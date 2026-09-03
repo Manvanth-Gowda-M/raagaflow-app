@@ -11,6 +11,7 @@ import '../../features/mood/presentation/mood_screen.dart';
 import '../../features/onboarding/presentation/onboarding_screen.dart';
 import '../../features/player/presentation/full_player_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
+import '../../features/downloads/presentation/downloads_screen.dart';
 import '../../features/themes/presentation/themes_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/player/presentation/widgets/mini_player.dart';
@@ -107,9 +108,9 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
             child: widget.navigationShell,
           ),
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: 108, // Floats cleanly above the new floating navigation bar
+            left: 12,
+            right: 12,
+            bottom: 94, // Floats cleanly as a sleek island right above the navigation bar
             child: const MiniPlayer(),
           ),
           Positioned(
@@ -189,14 +190,24 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(
-                                      'Now Playing 🎵',
-                                      style: TextStyle(
-                                        color: AppColors.accent,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 1.0,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.graphic_eq_rounded,
+                                          color: AppColors.accent,
+                                          size: 11,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'NOW PLAYING',
+                                          style: TextStyle(
+                                            color: AppColors.accent,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 1.0,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
@@ -273,9 +284,9 @@ class _PremiumNavigationBar extends StatelessWidget {
         'label': 'Library'
       },
       {
-        'iconActive': Icons.palette_rounded,
-        'iconInactive': Icons.palette_outlined,
-        'label': 'Themes'
+        'iconActive': Icons.download_done_rounded,
+        'iconInactive': Icons.download_outlined,
+        'label': 'Downloads'
       },
       {
         'iconActive': Icons.person_rounded,
@@ -538,8 +549,8 @@ GoRouter createRouter() {
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/themes',
-                pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const ThemesScreen()),
+                path: '/downloads',
+                pageBuilder: (context, state) => NoTransitionPage(key: state.pageKey, child: const DownloadsScreen()),
               ),
             ],
           ),
@@ -552,6 +563,22 @@ GoRouter createRouter() {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: '/themes',
+        pageBuilder: (context, state) => CustomTransitionPage(
+          child: const ThemesScreen(),
+          transitionsBuilder: (_, animation, __, child) => SlideTransition(
+            position: Tween(
+              begin: const Offset(1, 0),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            )),
+            child: child,
+          ),
+        ),
       ),
       GoRoute(
         path: '/player',

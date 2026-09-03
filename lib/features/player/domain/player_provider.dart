@@ -3,8 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:audio_service/audio_service.dart';
 import '../../../shared/models/track_model.dart';
 import '../../../shared/services/audio_handler.dart';
+import '../../../shared/services/saavn_music_provider.dart';
 import '../../library/domain/library_provider.dart';
+import 'spatial_audio_provider.dart';
 import 'audio_effects_provider.dart';
+import 'sleep_timer_provider.dart';
 
 // Provided via override in main.dart
 final audioHandlerProvider = Provider<RaagaAudioHandler>((ref) {
@@ -18,6 +21,10 @@ class PlayerState {
   final List<TrackModel> queue;
   final int queueIndex;
   final String? lastError;
+  final bool isAutoplayEnabled;
+  final double playbackSpeed;
+  final bool isShuffle;
+  final bool isRepeat;
 
   const PlayerState({
     this.currentTrack,
@@ -26,6 +33,10 @@ class PlayerState {
     this.queue = const [],
     this.queueIndex = 0,
     this.lastError,
+    this.isAutoplayEnabled = true,
+    this.playbackSpeed = 1.0,
+    this.isShuffle = false,
+    this.isRepeat = false,
   });
 
   factory PlayerState.initial() => const PlayerState();
@@ -38,6 +49,10 @@ class PlayerState {
     int? queueIndex,
     String? lastError,
     bool clearError = false,
+    bool? isAutoplayEnabled,
+    double? playbackSpeed,
+    bool? isShuffle,
+    bool? isRepeat,
   }) =>
       PlayerState(
         currentTrack: currentTrack ?? this.currentTrack,
@@ -46,11 +61,17 @@ class PlayerState {
         queue: queue ?? this.queue,
         queueIndex: queueIndex ?? this.queueIndex,
         lastError: clearError ? null : (lastError ?? this.lastError),
+        isAutoplayEnabled: isAutoplayEnabled ?? this.isAutoplayEnabled,
+        playbackSpeed: playbackSpeed ?? this.playbackSpeed,
+        isShuffle: isShuffle ?? this.isShuffle,
+        isRepeat: isRepeat ?? this.isRepeat,
       );
 }
 
 class PlayerNotifier extends StateNotifier<PlayerState> {
   final Ref _ref;
+  final SaavnMusicProvider _saavnProvider = SaavnMusicProvider();
+  bool _isLoadingAutoplay = false;
 
   PlayerNotifier(this._ref) : super(PlayerState.initial()) {
     // Wire up the audio handler callbacks for auto-next and notification controls
@@ -98,6 +119,7 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     handler.androidAudioSessionIdStream.listen((sessionId) {
       if (sessionId != null) {
         _ref.read(audioEffectsProvider.notifier).setAudioSessionId(sessionId);
+        _ref.read(spatialAudioProvider.notifier).setAudioSessionId(sessionId);
       }
     });
 
@@ -105,15 +127,30 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     _ref.read(audioEffectsProvider.notifier).onPanUpdate = (pan, depth) {
       handler.apply8DPan(pan, depth);
     };
+    _ref.read(spatialAudioProvider.notifier).onPanUpdate = (pan, depth) {
+      handler.apply8DPan(pan, depth);
+    };
+  }
+
+  Future<void> setAutoplay(bool enabled) async {
+    state = state.copyWith(isAutoplayEnabled: enabled);
+  }
+
+  Future<void> setSpeed(double speed) async {
+    state = state.copyWith(playbackSpeed: speed);
+    await _ref.read(audioHandlerProvider).setSpeed(speed);
   }
 
   Future<void> play(TrackModel track, {List<TrackModel>? queue}) async {
     int idx = 0;
-    final q = queue ?? [track];
+    final q = queue != null ? List<TrackModel>.from(queue) : [track];
     if (queue != null) {
       idx = queue.indexOf(track);
       if (idx < 0) idx = 0;
     }
+
+    // Set deterministic seed for organic spatial pattern
+    _ref.read(spatialAudioProvider.notifier).setTrackSeed(track.id);
 
     // Eagerly update UI so the player appears immediately
     state = state.copyWith(
@@ -131,6 +168,11 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     try {
       final handler = _ref.read(audioHandlerProvider);
       await handler.playTrack(track);
+
+      // Pre-cache the next song in the queue for zero-latency instant skips
+      if (idx + 1 < q.length) {
+        handler.precacheTrack(q[idx + 1]);
+      }
     } catch (e, stack) {
       debugPrint('=== PLAYBACK ERROR ===');
       debugPrint('$e');
@@ -157,6 +199,38 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 
   Future<void> skipToNext() async {
     if (state.queue.isEmpty) return;
+
+    // Check if sleep timer is set to stop at end of song
+    final sleepState = _ref.read(sleepTimerProvider);
+    if (sleepState.isActive && sleepState.endOfTrack) {
+      _ref.read(sleepTimerProvider.notifier).onTrackEnded();
+      return;
+    }
+
+    // Check if we reached the end of queue
+    if (state.queueIndex >= state.queue.length - 1) {
+      if (state.isAutoplayEnabled && !_isLoadingAutoplay) {
+        _isLoadingAutoplay = true;
+        try {
+          final current = state.currentTrack ?? state.queue.last;
+          final recs = await _saavnProvider.getRecommendations(current, limit: 8);
+          final existingIds = state.queue.map((t) => t.id).toSet();
+          final newTracks = recs.where((t) => !existingIds.contains(t.id)).toList();
+
+          if (newTracks.isNotEmpty) {
+            final updatedQueue = [...state.queue, ...newTracks];
+            _isLoadingAutoplay = false;
+            await play(updatedQueue[state.queueIndex + 1], queue: updatedQueue);
+            return;
+          }
+        } catch (e) {
+          debugPrint('Autoplay recommendation fetch failed: $e');
+        } finally {
+          _isLoadingAutoplay = false;
+        }
+      }
+    }
+
     final nextIdx = (state.queueIndex + 1) % state.queue.length;
     await play(state.queue[nextIdx], queue: state.queue);
   }
@@ -166,6 +240,14 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     final prevIdx =
         (state.queueIndex - 1 + state.queue.length) % state.queue.length;
     await play(state.queue[prevIdx], queue: state.queue);
+  }
+
+  void toggleShuffle() {
+    state = state.copyWith(isShuffle: !state.isShuffle);
+  }
+
+  void toggleRepeat() {
+    state = state.copyWith(isRepeat: !state.isRepeat);
   }
 
   void clearError() => state = state.copyWith(clearError: true);
